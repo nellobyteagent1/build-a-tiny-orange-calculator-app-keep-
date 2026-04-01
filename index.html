@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orange Calculator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  .calc {
+    width: 320px;
+    background: #2a2a2a;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,140,0,.08);
+  }
+  .display {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: right;
+    min-height: 88px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .expr {
+    color: #888;
+    font-size: 14px;
+    min-height: 20px;
+    word-break: break-all;
+  }
+  .result {
+    color: #ff8c00;
+    font-size: 40px;
+    font-weight: 300;
+    letter-spacing: -1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  button {
+    height: 60px;
+    border: none;
+    border-radius: 12px;
+    font-size: 20px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform .08s, filter .08s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:active { transform: scale(.93); }
+  .num {
+    background: #3a3a3a;
+    color: #fff;
+  }
+  .num:hover { background: #444; }
+  .op {
+    background: #ff8c00;
+    color: #fff;
+  }
+  .op:hover { filter: brightness(1.15); }
+  .fn {
+    background: #555;
+    color: #fff;
+  }
+  .fn:hover { background: #666; }
+  .zero { grid-column: span 2; }
+  .eq {
+    background: #ff6200;
+    color: #fff;
+  }
+  .eq:hover { filter: brightness(1.15); }
+</style>
+</head>
+<body>
+<div class="calc">
+  <div class="display">
+    <div class="expr" id="expr"></div>
+    <div class="result" id="result">0</div>
+  </div>
+  <div class="buttons">
+    <button class="fn" data-action="clear">AC</button>
+    <button class="fn" data-action="sign">+/&minus;</button>
+    <button class="fn" data-action="percent">%</button>
+    <button class="op" data-action="op" data-val="/">&divide;</button>
+    <button class="num" data-val="7">7</button>
+    <button class="num" data-val="8">8</button>
+    <button class="num" data-val="9">9</button>
+    <button class="op" data-action="op" data-val="*">&times;</button>
+    <button class="num" data-val="4">4</button>
+    <button class="num" data-val="5">5</button>
+    <button class="num" data-val="6">6</button>
+    <button class="op" data-action="op" data-val="-">&minus;</button>
+    <button class="num" data-val="1">1</button>
+    <button class="num" data-val="2">2</button>
+    <button class="num" data-val="3">3</button>
+    <button class="op" data-action="op" data-val="+">+</button>
+    <button class="num zero" data-val="0">0</button>
+    <button class="num" data-val=".">.</button>
+    <button class="eq" data-action="eq">=</button>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let cur = '0', prev = '', op = '', fresh = true;
+
+function fmt(n) {
+  const s = String(n);
+  if (s.length > 12) return parseFloat(n).toPrecision(10);
+  return s;
+}
+
+function update() {
+  $('result').textContent = cur;
+  $('expr').textContent = prev && op ? `${prev} ${({'/':'÷','*':'×','-':'−','+':'+'})[op]} ` : '';
+}
+
+function inputDigit(d) {
+  if (fresh) { cur = d === '.' ? '0.' : d; fresh = false; }
+  else if (d === '.' && cur.includes('.')) return;
+  else if (cur === '0' && d !== '.') cur = d;
+  else cur += d;
+  update();
+}
+
+function doOp(next) {
+  if (prev && op && !fresh) {
+    const r = eval(`${prev}${op}${cur}`);
+    cur = fmt(isFinite(r) ? r : 'Error');
+    prev = cur;
+  } else {
+    prev = cur;
+  }
+  op = next;
+  fresh = true;
+  update();
+}
+
+function doEq() {
+  if (!prev || !op) return;
+  const r = eval(`${prev}${op}${cur}`);
+  cur = fmt(isFinite(r) ? r : 'Error');
+  $('expr').textContent = '';
+  prev = ''; op = '';
+  fresh = true;
+  update();
+}
+
+document.querySelector('.buttons').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const action = btn.dataset.action;
+  if (!action) { inputDigit(btn.dataset.val); return; }
+  if (action === 'clear') { cur = '0'; prev = ''; op = ''; fresh = true; update(); }
+  else if (action === 'sign') { cur = fmt(-parseFloat(cur)); update(); }
+  else if (action === 'percent') { cur = fmt(parseFloat(cur) / 100); update(); }
+  else if (action === 'op') doOp(btn.dataset.val);
+  else if (action === 'eq') doEq();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9' || e.key === '.') inputDigit(e.key);
+  else if ('+-*/'.includes(e.key)) doOp(e.key);
+  else if (e.key === 'Enter' || e.key === '=') doEq();
+  else if (e.key === 'Escape') { cur = '0'; prev = ''; op = ''; fresh = true; update(); }
+  else if (e.key === '%') { cur = fmt(parseFloat(cur) / 100); update(); }
+});
+</script>
+</body>
+</html>
